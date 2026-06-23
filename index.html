@@ -180,11 +180,22 @@
     font-size:14px;text-align:center;transition:opacity .4s;pointer-events:none}
   .hint.hide{opacity:0}
 
+  .tools-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .tools{display:flex;gap:8px;flex-wrap:wrap}
+  .mini{background:var(--surface-2);border:1px solid var(--line);color:var(--text);
+    padding:9px 14px;border-radius:9px;font-size:13px;font-weight:600}
+  .mini:active{background:var(--line)}
+
   @media (max-width:880px){
-    .work{flex-direction:column}
-    .pane.left{border-right:none;border-bottom:1px solid var(--line)}
+    body{overflow:auto;-webkit-overflow-scrolling:touch}
+    #editor{height:auto;min-height:100dvh}
+    .topbar{position:sticky;top:0;z-index:10}
+    .work{flex-direction:column;flex:none}
+    .pane{overflow:visible;padding:18px}
+    .pane.left{border-right:none;border-bottom:1px solid var(--line);flex:none}
     .pane.right{width:100%}
-    textarea#script{min-height:200px}
+    textarea#script{height:48vh;min-height:260px;flex:none;font-size:19px}
+    .start{padding:11px 18px;font-size:14.5px}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -205,8 +216,16 @@
 
   <div class="work">
     <div class="pane left">
-      <div class="field-label">Script — paste or edit your Burmese text</div>
-      <textarea id="script" spellcheck="false"></textarea>
+      <div class="tools-row">
+        <div class="field-label" style="margin:0">Script — paste, type, or upload</div>
+        <div class="tools">
+          <button class="mini" id="pasteBtn">Paste</button>
+          <button class="mini" id="uploadBtn">Upload .txt</button>
+          <button class="mini" id="clearBtn">Clear</button>
+        </div>
+      </div>
+      <textarea id="script" spellcheck="false" placeholder="Paste or type your Burmese script here…"></textarea>
+      <input type="file" id="fileInput" accept=".txt,.text,text/plain" hidden>
     </div>
 
     <div class="pane right">
@@ -351,6 +370,29 @@ const flow=$('flow'), stage=$('stage'), prompter=$('prompter');
 
 // ---------- editor wiring ----------
 $('script').value = DEFAULT_SCRIPT;
+
+// upload a .txt file (works on iPhone/Android/tablet)
+$('uploadBtn').addEventListener('click',()=>$('fileInput').click());
+$('fileInput').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ $('script').value=r.result; };
+  r.readAsText(f);
+  e.target.value='';
+});
+// paste from clipboard
+$('pasteBtn').addEventListener('click',async()=>{
+  try{
+    const t=await navigator.clipboard.readText();
+    if(t) $('script').value=t;
+  }catch(err){
+    alert('Tap and hold inside the text box, then choose Paste.');
+  }
+});
+// clear
+$('clearBtn').addEventListener('click',()=>{
+  if(confirm('Clear the text box?')) $('script').value='';
+});
 
 function bindRange(id, key, fmt, apply){
   const el=$(id), out=$('v'+id.slice(1));
