@@ -135,6 +135,24 @@
   /* progress */
   #prog{position:absolute;left:0;bottom:0;height:4px;width:0;background:var(--accent);z-index:4;transition:width .1s linear}
 
+  /* seek slider */
+  #timeline{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:112px;
+    width:min(560px,86vw);z-index:6;-webkit-appearance:none;appearance:none;
+    height:6px;border-radius:6px;background:rgba(255,255,255,.18);outline:none;
+    transition:opacity .35s ease}
+  #timeline.hide{opacity:0;pointer-events:none}
+  #timeline::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;
+    background:var(--accent);box-shadow:0 2px 9px rgba(0,0,0,.55);cursor:pointer}
+  #timeline::-moz-range-thumb{width:28px;height:28px;border:none;border-radius:50%;background:var(--accent);cursor:pointer}
+
+  /* speed flash */
+  #speedFlash{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.88);z-index:7;
+    background:rgba(20,24,29,.94);border:1px solid var(--line);color:var(--text);
+    font-size:30px;font-weight:700;padding:13px 26px;border-radius:16px;font-variant-numeric:tabular-nums;
+    opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease}
+  #speedFlash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
   /* controls */
   #controls{
     position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
@@ -153,7 +171,9 @@
   .cbtn.play svg{width:26px;height:26px}
   .cdivider{width:1px;height:30px;background:var(--line);margin:0 2px}
   .cstepper{display:flex;align-items:center;gap:2px;background:var(--surface-2);border-radius:13px;padding:4px}
-  .cstepper .lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:0 8px}
+  .cstepper .lbl{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 8px;min-width:46px}
+  .cstepper .lbl b{font-size:17px;font-weight:700;color:var(--text);line-height:1;font-variant-numeric:tabular-nums}
+  .cstepper .lbl i{font-style:normal;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:3px}
   .cstepper button{width:38px;height:42px;border-radius:9px;background:transparent;font-size:22px;font-weight:600;color:var(--text)}
   .cstepper button:active{background:var(--line)}
   .exit{position:absolute;top:18px;right:18px;z-index:6;width:46px;height:46px;border-radius:13px;
@@ -237,7 +257,7 @@
         </div>
         <div class="ctl">
           <div class="row"><span class="name">Scroll speed</span><span class="val" id="vSpeed">10</span></div>
-          <input type="range" id="rSpeed" min="1" max="40" step="1" value="10">
+          <input type="range" id="rSpeed" min="0.5" max="40" step="0.5" value="10">
         </div>
         <div class="ctl">
           <div class="row"><span class="name">Line spacing</span><span class="val" id="vLine">2.0</span></div>
@@ -298,20 +318,22 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
     </button>
     <div class="cstepper">
-      <button id="speedDown">−</button><span class="lbl">Speed</span><button id="speedUp">+</button>
+      <button id="speedDown">−</button><span class="lbl"><b id="speedVal">10</b><i>speed</i></span><button id="speedUp">+</button>
     </div>
     <button class="cbtn play" id="playBtn" title="Play / Pause">
       <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
     </button>
     <div class="cstepper">
-      <button id="fontDown">−</button><span class="lbl">Size</span><button id="fontUp">+</button>
+      <button id="fontDown">−</button><span class="lbl"><b id="fontVal">52</b><i>size</i></span><button id="fontUp">+</button>
     </div>
     <button class="cbtn" id="mirrorBtn" title="Flip horizontally">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M16 7l4 5-4 5"/><path d="M8 7l-4 5 4 5"/></svg>
     </button>
   </div>
 
+  <input id="timeline" type="range" min="0" max="100" step="0.1" value="0" aria-label="Seek through script">
   <div id="prog"></div>
+  <div id="speedFlash"></div>
   <div id="count"><div class="num" id="countNum">3</div></div>
 </div>
 
@@ -363,20 +385,27 @@ const S = {
   fontSize:52, speed:10, lineHeight:2.0, width:82, align:'center',
   guide:true, mirrorH:false, mirrorV:false, countdown:true
 };
-let playing=false, offset=0, lastTs=0, raf=null, wakeLock=null, hideTimer=null;
+let playing=false, offset=0, lastTs=0, raf=null, wakeLock=null, hideTimer=null, seeking=false, flashTimer=null;
 
 const $ = id => document.getElementById(id);
 const flow=$('flow'), stage=$('stage'), prompter=$('prompter');
 
 // ---------- editor wiring ----------
-$('script').value = DEFAULT_SCRIPT;
+// keep the script text across refreshes (acts like an installed app)
+function persistCurrent(){ try{ localStorage.setItem('lbw_tp_current', $('script').value); }catch(e){} }
+function setScript(t){ $('script').value=t; persistCurrent(); }
+(function restoreScript(){
+  let saved=null; try{ saved=localStorage.getItem('lbw_tp_current'); }catch(e){}
+  $('script').value = (saved!==null && saved!=='') ? saved : DEFAULT_SCRIPT;
+})();
+$('script').addEventListener('input', persistCurrent);
 
 // upload a .txt file (works on iPhone/Android/tablet)
 $('uploadBtn').addEventListener('click',()=>$('fileInput').click());
 $('fileInput').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
-  r.onload=()=>{ $('script').value=r.result; };
+  r.onload=()=>{ setScript(r.result); };
   r.readAsText(f);
   e.target.value='';
 });
@@ -384,14 +413,14 @@ $('fileInput').addEventListener('change',e=>{
 $('pasteBtn').addEventListener('click',async()=>{
   try{
     const t=await navigator.clipboard.readText();
-    if(t) $('script').value=t;
+    if(t) setScript(t);
   }catch(err){
     alert('Tap and hold inside the text box, then choose Paste.');
   }
 });
 // clear
 $('clearBtn').addEventListener('click',()=>{
-  if(confirm('Clear the text box?')) $('script').value='';
+  if(confirm('Clear the text box?')) setScript('');
 });
 
 function bindRange(id, key, fmt, apply){
@@ -403,7 +432,7 @@ function bindRange(id, key, fmt, apply){
   });
 }
 bindRange('rFont','fontSize',v=>v+' px',applyStyle);
-bindRange('rSpeed','speed',v=>v,null);
+bindRange('rSpeed','speed',v=>v,()=>{ const sv=$('speedVal'); if(sv) sv.textContent=S.speed; });
 bindRange('rLine','lineHeight',v=>v.toFixed(1),applyStyle);
 bindRange('rWidth','width',v=>v+'%',applyStyle);
 
@@ -439,10 +468,15 @@ function openPrompter(){
   flow.textContent=$('script').value || ' ';
   applyStyle();
   $('guide').classList.toggle('on',S.guide);
+  $('speedVal').textContent=S.speed;
+  $('fontVal').textContent=S.fontSize;
+  $('timeline').value=0;
   offset = prompter.clientHeight*0.5; // first line starts at the guide
   flow.style.transform='translateY('+offset+'px)';
+  $('prog').style.width='0%';
   prompter.classList.add('show');
   $('hint').classList.remove('hide');
+  seeking=false;
   requestWake();
   if(S.countdown){ runCountdown(()=>setPlaying(true)); }
   else setPlaying(false);
@@ -469,19 +503,42 @@ function tick(ts){
   const dt=(ts-lastTs)/1000; lastTs=ts;
   // px/sec scales with font so reading pace feels consistent across sizes
   const pps = S.speed * (S.fontSize/28) * 3.0;
-  offset -= pps*dt;
-  flow.style.transform='translateY('+offset+'px)';
-  const total=flow.scrollHeight;
-  const traveled = prompter.clientHeight*0.5 - offset;
-  $('prog').style.width = Math.max(0,Math.min(100,(traveled/total)*100))+'%';
-  if(offset < -(total) ){ setPlaying(false); }   // reached the end
+  if(!seeking){
+    offset -= pps*dt;
+    flow.style.transform='translateY('+offset+'px)';
+    updateProgress();
+  }
+  if(offset < -(flow.scrollHeight) ){ setPlaying(false); }   // reached the end
   else raf=requestAnimationFrame(tick);
+}
+
+function updateProgress(){
+  const total=flow.scrollHeight||1;
+  const traveled = prompter.clientHeight*0.5 - offset;
+  const percent = Math.max(0,Math.min(100,(traveled/total)*100));
+  $('prog').style.width = percent+'%';
+  if(!seeking) $('timeline').value = percent;
+}
+
+// jump to a position in the script (used by the seek slider)
+function seekToPercent(p){
+  const total=flow.scrollHeight||1;
+  offset = prompter.clientHeight*0.5 - (p/100)*total;
+  flow.style.transform='translateY('+offset+'px)';
+  $('prog').style.width = p+'%';
+}
+
+// brief on-screen speed readout while filming
+function flashSpeed(){
+  const el=$('speedFlash'); el.textContent='Speed  '+S.speed;
+  el.classList.add('show'); clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>el.classList.remove('show'),750);
 }
 
 function restart(){
   offset=prompter.clientHeight*0.5;
   flow.style.transform='translateY('+offset+'px)';
-  $('prog').style.width='0%';
+  $('prog').style.width='0%'; $('timeline').value=0; seeking=false;
   if(S.countdown){ setPlaying(false); runCountdown(()=>setPlaying(true)); }
   else setPlaying(true);
 }
@@ -499,36 +556,43 @@ stage.addEventListener('click',()=> setPlaying(!playing));
 // manual scrub when paused (drag / wheel)
 let dragY=null;
 prompter.addEventListener('pointerdown',e=>{
-  if(e.target.closest('#controls')||e.target.closest('.exit')) return;
+  if(e.target.closest('#controls')||e.target.closest('.exit')||e.target.closest('#timeline')) return;
   if(!playing) dragY=e.clientY;
 });
 prompter.addEventListener('pointermove',e=>{
   if(dragY===null)return;
   offset += (e.clientY-dragY); dragY=e.clientY;
   flow.style.transform='translateY('+offset+'px)';
+  updateProgress();
 });
 window.addEventListener('pointerup',()=>dragY=null);
-prompter.addEventListener('wheel',e=>{ if(!playing){offset-=e.deltaY; flow.style.transform='translateY('+offset+'px)';}},{passive:true});
+prompter.addEventListener('wheel',e=>{ if(!playing){offset-=e.deltaY; flow.style.transform='translateY('+offset+'px)'; updateProgress();}},{passive:true});
+
+// seek slider — drag forward/back through the script
+$('timeline').addEventListener('pointerdown',e=>{ e.stopPropagation(); seeking=true; });
+$('timeline').addEventListener('input',e=>{ e.stopPropagation(); seekToPercent(parseFloat($('timeline').value)); });
+$('timeline').addEventListener('pointerup',()=>{ seeking=false; });
+$('timeline').addEventListener('change',()=>{ seeking=false; });
 
 // controls
 $('goStart').addEventListener('click',openPrompter);
 $('exitBtn').addEventListener('click',closePrompter);
 $('playBtn').addEventListener('click',e=>{e.stopPropagation();setPlaying(!playing);});
 $('restartBtn').addEventListener('click',e=>{e.stopPropagation();restart();});
-$('speedUp').addEventListener('click',e=>{e.stopPropagation();S.speed=Math.min(40,S.speed+2);syncSpeed();});
-$('speedDown').addEventListener('click',e=>{e.stopPropagation();S.speed=Math.max(1,S.speed-2);syncSpeed();});
+$('speedUp').addEventListener('click',e=>{e.stopPropagation();S.speed=Math.min(40,+(S.speed+1).toFixed(1));syncSpeed();flashSpeed();});
+$('speedDown').addEventListener('click',e=>{e.stopPropagation();S.speed=Math.max(0.5,+(S.speed-1).toFixed(1));syncSpeed();flashSpeed();});
 $('fontUp').addEventListener('click',e=>{e.stopPropagation();S.fontSize=Math.min(120,S.fontSize+4);syncFont();});
 $('fontDown').addEventListener('click',e=>{e.stopPropagation();S.fontSize=Math.max(28,S.fontSize-4);syncFont();});
 $('mirrorBtn').addEventListener('click',e=>{e.stopPropagation();S.mirrorH=!S.mirrorH;applyStyle();
   document.querySelector('[data-opt=mirrorH]').classList.toggle('on',S.mirrorH);saveSettings();});
-function syncSpeed(){$('rSpeed').value=S.speed;$('vSpeed').textContent=S.speed;saveSettings();}
-function syncFont(){$('rFont').value=S.fontSize;$('vFont').textContent=S.fontSize+' px';applyStyle();saveSettings();}
+function syncSpeed(){$('rSpeed').value=S.speed;$('vSpeed').textContent=S.speed;const sv=$('speedVal');if(sv)sv.textContent=S.speed;saveSettings();}
+function syncFont(){$('rFont').value=S.fontSize;$('vFont').textContent=S.fontSize+' px';const fv=$('fontVal');if(fv)fv.textContent=S.fontSize;applyStyle();saveSettings();}
 
 // auto-hide controls
 function scheduleHide(){
   clearTimeout(hideTimer);
-  $('controls').classList.remove('hide'); $('exitBtn').classList.remove('hide');
-  hideTimer=setTimeout(()=>{ if(playing){$('controls').classList.add('hide');$('exitBtn').classList.add('hide');} },3500);
+  ['controls','exitBtn','timeline'].forEach(id=>$(id).classList.remove('hide'));
+  hideTimer=setTimeout(()=>{ if(playing){ ['controls','exitBtn','timeline'].forEach(id=>$(id).classList.add('hide')); } },3500);
 }
 ['pointermove','pointerdown','keydown'].forEach(ev=>prompter.addEventListener(ev,scheduleHide));
 
@@ -536,8 +600,8 @@ function scheduleHide(){
 window.addEventListener('keydown',e=>{
   if(!prompter.classList.contains('show'))return;
   if(e.code==='Space'){e.preventDefault();setPlaying(!playing);}
-  if(e.code==='ArrowUp'){S.speed=Math.min(40,S.speed+1);syncSpeed();}
-  if(e.code==='ArrowDown'){S.speed=Math.max(1,S.speed-1);syncSpeed();}
+  if(e.code==='ArrowUp'){S.speed=Math.min(40,+(S.speed+1).toFixed(1));syncSpeed();flashSpeed();}
+  if(e.code==='ArrowDown'){S.speed=Math.max(0.5,+(S.speed-1).toFixed(1));syncSpeed();flashSpeed();}
   if(e.code==='Escape')closePrompter();
 });
 
@@ -563,6 +627,8 @@ function reflectSettings(){
   $('rWidth').value=S.width;  $('vWidth').textContent=S.width+'%';
   [...$('segAlign').children].forEach(x=>x.classList.toggle('on',x.dataset.a===S.align));
   document.querySelectorAll('.toggle').forEach(t=>t.classList.toggle('on',!!S[t.dataset.opt]));
+  const sv=$('speedVal'); if(sv) sv.textContent=S.speed;
+  const fv=$('fontVal'); if(fv) fv.textContent=S.fontSize;
 }
 
 // script library
@@ -579,7 +645,7 @@ function listScripts(){
     el.innerHTML=`<div class="meta"><div class="t"></div><div class="s">${words} words · ${data.date||''}</div></div>
       <button data-load>Load</button><button class="del" data-del>Delete</button>`;
     el.querySelector('.t').textContent=data.title||'Untitled';
-    el.querySelector('[data-load]').onclick=()=>{ $('script').value=data.text; };
+    el.querySelector('[data-load]').onclick=()=>{ setScript(data.text); };
     el.querySelector('[data-del]').onclick=()=>{ try{localStorage.removeItem(k);}catch(e){} listScripts(); };
     wrap.appendChild(el);
   }
