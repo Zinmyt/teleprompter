@@ -1,0 +1,559 @@
+<!-- LaborWork Teleprompter — Mode A (iPad) -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Teleprompter">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0c0f">
+<title>LaborWork Teleprompter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#0a0c0f;
+    --surface:#14181d;
+    --surface-2:#1d232b;
+    --line:#2a323c;
+    --text:#f4f6f8;
+    --muted:#8b97a4;
+    --accent:#f5a623;
+    --accent-soft:rgba(245,166,35,.14);
+    --danger:#ff5b5b;
+    --r:14px;
+    --my:"Noto Sans Myanmar","Noto Sans",sans-serif;
+    --ui:"Inter",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);color:var(--text);font-family:var(--ui);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit;cursor:pointer;border:none;color:inherit}
+
+  /* ---------- EDITOR VIEW ---------- */
+  #editor{height:100dvh;display:flex;flex-direction:column}
+  .topbar{
+    display:flex;align-items:center;gap:14px;padding:16px 20px;
+    border-bottom:1px solid var(--line);background:var(--surface)
+  }
+  .brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:17px;letter-spacing:-.01em}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  .brand small{color:var(--muted);font-weight:500;font-size:12.5px;letter-spacing:0}
+  .topbar .grow{flex:1}
+  .start{
+    background:var(--accent);color:#1a1205;font-weight:700;font-size:15.5px;
+    padding:13px 26px;border-radius:11px;display:flex;align-items:center;gap:9px;
+    transition:transform .12s ease,filter .12s ease
+  }
+  .start:hover{filter:brightness(1.06)}
+  .start:active{transform:scale(.97)}
+
+  .work{flex:1;display:flex;min-height:0}
+  .pane{padding:22px;overflow:auto}
+  .pane.left{flex:1;display:flex;flex-direction:column;gap:14px;border-right:1px solid var(--line)}
+  .pane.right{width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:22px}
+
+  .field-label{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin-bottom:9px}
+  textarea#script{
+    flex:1;width:100%;resize:none;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r);padding:20px;color:var(--text);
+    font-family:var(--my);font-size:20px;line-height:2.05;outline:none;
+  }
+  textarea#script:focus{border-color:var(--accent)}
+
+  .group h3{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 14px;font-weight:600}
+  .ctl{margin-bottom:18px}
+  .ctl .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+  .ctl .name{font-size:14.5px;font-weight:500}
+  .ctl .val{font-size:13px;color:var(--accent);font-variant-numeric:tabular-nums;font-weight:600}
+  input[type=range]{
+    -webkit-appearance:none;width:100%;height:4px;border-radius:4px;background:var(--surface-2);outline:none;margin:0
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);
+    box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer
+  }
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;border:none;border-radius:50%;background:var(--accent);cursor:pointer}
+
+  .toggles{display:flex;flex-wrap:wrap;gap:10px}
+  .toggle{
+    flex:1 1 calc(50% - 5px);background:var(--surface);border:1px solid var(--line);border-radius:11px;
+    padding:13px 12px;font-size:14px;font-weight:500;display:flex;align-items:center;gap:9px;
+    color:var(--muted);transition:all .14s ease;min-width:0
+  }
+  .toggle .sw{width:16px;height:16px;border-radius:5px;border:2px solid var(--line);flex-shrink:0;transition:all .14s ease}
+  .toggle.on{color:var(--text);border-color:var(--accent);background:var(--accent-soft)}
+  .toggle.on .sw{background:var(--accent);border-color:var(--accent)}
+  .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:4px;gap:4px}
+  .seg button{flex:1;padding:10px;border-radius:8px;font-size:14px;font-weight:500;color:var(--muted);background:transparent}
+  .seg button.on{background:var(--accent);color:#1a1205;font-weight:600}
+
+  /* library */
+  .lib-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .save-btn{background:var(--surface-2);border:1px solid var(--line);padding:8px 14px;border-radius:9px;font-size:13px;font-weight:600;color:var(--text)}
+  .save-btn:active{background:var(--surface)}
+  .scripts{display:flex;flex-direction:column;gap:8px}
+  .script-item{
+    display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);
+    border-radius:11px;padding:12px 14px
+  }
+  .script-item .meta{flex:1;min-width:0}
+  .script-item .t{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .script-item .s{font-size:12px;color:var(--muted);margin-top:2px}
+  .script-item button{padding:8px 11px;border-radius:8px;font-size:12.5px;font-weight:600;background:var(--surface-2);color:var(--text)}
+  .script-item button.del{color:var(--danger);background:transparent}
+  .empty{color:var(--muted);font-size:13.5px;padding:14px;text-align:center;border:1px dashed var(--line);border-radius:11px}
+
+  /* ---------- PROMPTER VIEW ---------- */
+  #prompter{position:fixed;inset:0;background:#000;display:none;z-index:50;overflow:hidden;touch-action:none}
+  #prompter.show{display:block}
+  #stage{position:absolute;inset:0;display:flex;justify-content:center}
+  #flow{
+    font-family:var(--my);color:#fff;white-space:pre-wrap;word-break:break-word;
+    will-change:transform;padding:0 0;
+  }
+  /* reading guide + edge fades */
+  .guide{
+    position:absolute;left:0;right:0;top:50%;height:0;pointer-events:none;z-index:3;
+    border-top:2px solid var(--accent);box-shadow:0 0 18px var(--accent);opacity:.0;transition:opacity .2s
+  }
+  .guide.on{opacity:.55}
+  .guide::before,.guide::after{
+    content:"";position:absolute;top:-9px;border-style:solid;border-color:transparent
+  }
+  .guide::before{left:14px;border-width:9px 0 9px 14px;border-left-color:var(--accent)}
+  .guide::after{right:14px;border-width:9px 14px 9px 0;border-right-color:var(--accent)}
+  .fade{position:absolute;left:0;right:0;height:24%;z-index:2;pointer-events:none}
+  .fade.top{top:0;background:linear-gradient(#000 12%,transparent)}
+  .fade.bot{bottom:0;background:linear-gradient(transparent,#000 88%)}
+
+  /* progress */
+  #prog{position:absolute;left:0;bottom:0;height:4px;width:0;background:var(--accent);z-index:4;transition:width .1s linear}
+
+  /* controls */
+  #controls{
+    position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
+    display:flex;align-items:center;gap:10px;background:rgba(20,24,29,.92);
+    border:1px solid var(--line);border-radius:18px;padding:10px 14px;
+    backdrop-filter:blur(10px);transition:opacity .35s ease;max-width:94vw
+  }
+  #controls.hide{opacity:0;pointer-events:none}
+  .cbtn{
+    width:50px;height:50px;border-radius:13px;background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;color:var(--text);flex-shrink:0
+  }
+  .cbtn:active{background:var(--line)}
+  .cbtn.play{width:64px;background:var(--accent);color:#1a1205}
+  .cbtn svg{width:22px;height:22px}
+  .cbtn.play svg{width:26px;height:26px}
+  .cdivider{width:1px;height:30px;background:var(--line);margin:0 2px}
+  .cstepper{display:flex;align-items:center;gap:2px;background:var(--surface-2);border-radius:13px;padding:4px}
+  .cstepper .lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:0 8px}
+  .cstepper button{width:38px;height:42px;border-radius:9px;background:transparent;font-size:22px;font-weight:600;color:var(--text)}
+  .cstepper button:active{background:var(--line)}
+  .exit{position:absolute;top:18px;right:18px;z-index:6;width:46px;height:46px;border-radius:13px;
+    background:rgba(20,24,29,.92);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+    transition:opacity .35s}
+  .exit.hide{opacity:0;pointer-events:none}
+  .exit svg{width:22px;height:22px}
+
+  .paused-tag{
+    position:absolute;top:18px;left:18px;z-index:6;background:rgba(20,24,29,.92);border:1px solid var(--line);
+    padding:9px 16px;border-radius:12px;font-size:13px;font-weight:600;color:var(--muted);
+    display:flex;align-items:center;gap:8px;transition:opacity .3s
+  }
+  .paused-tag .pd{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+  .paused-tag.hidden{opacity:0;pointer-events:none}
+
+  /* countdown */
+  #count{position:absolute;inset:0;z-index:7;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
+  #count.show{display:flex}
+  #count .num{font-family:var(--ui);font-size:140px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+
+  /* tiny scrim hint */
+  .hint{position:absolute;left:50%;top:60%;transform:translateX(-50%);z-index:6;color:var(--muted);
+    font-size:14px;text-align:center;transition:opacity .4s;pointer-events:none}
+  .hint.hide{opacity:0}
+
+  @media (max-width:880px){
+    .work{flex-direction:column}
+    .pane.left{border-right:none;border-bottom:1px solid var(--line)}
+    .pane.right{width:100%}
+    textarea#script{min-height:200px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<!-- ============ EDITOR ============ -->
+<div id="editor">
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>LaborWork Teleprompter <small>· ဖတ်စရာ စာသား</small></span>
+    </div>
+    <div class="grow"></div>
+    <button class="start" id="goStart">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      Start prompter
+    </button>
+  </div>
+
+  <div class="work">
+    <div class="pane left">
+      <div class="field-label">Script — paste or edit your Burmese text</div>
+      <textarea id="script" spellcheck="false"></textarea>
+    </div>
+
+    <div class="pane right">
+      <div class="group">
+        <h3>Reading</h3>
+        <div class="ctl">
+          <div class="row"><span class="name">Font size</span><span class="val" id="vFont">52 px</span></div>
+          <input type="range" id="rFont" min="28" max="120" step="2" value="52">
+        </div>
+        <div class="ctl">
+          <div class="row"><span class="name">Scroll speed</span><span class="val" id="vSpeed">10</span></div>
+          <input type="range" id="rSpeed" min="1" max="40" step="1" value="10">
+        </div>
+        <div class="ctl">
+          <div class="row"><span class="name">Line spacing</span><span class="val" id="vLine">2.0</span></div>
+          <input type="range" id="rLine" min="14" max="32" step="1" value="20">
+        </div>
+        <div class="ctl">
+          <div class="row"><span class="name">Text width</span><span class="val" id="vWidth">82%</span></div>
+          <input type="range" id="rWidth" min="40" max="100" step="2" value="82">
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Alignment</h3>
+        <div class="seg" id="segAlign">
+          <button data-a="left">Left</button>
+          <button data-a="center" class="on">Center</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Options</h3>
+        <div class="toggles">
+          <button class="toggle on" data-opt="guide"><span class="sw"></span>Reading line</button>
+          <button class="toggle" data-opt="mirrorH"><span class="sw"></span>Flip ↔</button>
+          <button class="toggle" data-opt="mirrorV"><span class="sw"></span>Flip ↕</button>
+          <button class="toggle on" data-opt="countdown"><span class="sw"></span>3·2·1 start</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="lib-head">
+          <h3 style="margin:0">Saved scripts</h3>
+          <button class="save-btn" id="saveBtn">+ Save current</button>
+        </div>
+        <div class="scripts" id="scripts"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PROMPTER ============ -->
+<div id="prompter">
+  <div class="fade top"></div>
+  <div class="fade bot"></div>
+  <div class="guide on" id="guide"></div>
+  <div id="stage"><div id="flow"></div></div>
+
+  <div class="paused-tag hidden" id="pausedTag"><span class="pd"></span>Paused — tap to resume</div>
+
+  <button class="exit" id="exitBtn" title="Exit">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+
+  <div class="hint" id="hint">Tap the text to pause / resume</div>
+
+  <div id="controls">
+    <button class="cbtn" id="restartBtn" title="Restart">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+    </button>
+    <div class="cstepper">
+      <button id="speedDown">−</button><span class="lbl">Speed</span><button id="speedUp">+</button>
+    </div>
+    <button class="cbtn play" id="playBtn" title="Play / Pause">
+      <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <div class="cstepper">
+      <button id="fontDown">−</button><span class="lbl">Size</span><button id="fontUp">+</button>
+    </div>
+    <button class="cbtn" id="mirrorBtn" title="Flip horizontally">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M16 7l4 5-4 5"/><path d="M8 7l-4 5 4 5"/></svg>
+    </button>
+  </div>
+
+  <div id="prog"></div>
+  <div id="count"><div class="num" id="countNum">3</div></div>
+</div>
+
+<script>
+const DEFAULT_SCRIPT = `မင်္ဂလာပါ၊ Laborwork ကပြန်လည်ကြိုဆိုလိုက်ပါတယ်၊
+
+ဒီနေ့တော့ လူသစ်ဘတ်ရိုက် တဲ့ကိစ္စနဲ့ပတ်သက်ပြီးအမေးများနေတဲ့မေးခွန်းတွေကိုဖြေပေးပါမယ်၊
+
+မထမဦးဆုံးအနေနဲ့ လူသစ်ဘတ်ရိုက်တာက တကယ်ဖွင့်တော့မှာလား ဆိုတဲ့မေးခွန်းပါ
+
+ဒီနှစ်ထဲမှာတော့ တကယ်ဖွင့်ဖို့သေချာပါတယ်၊ ဘာကြောင့်လဲဆိုတော့ မကြာသေးခင်က အလုပ်သမားအခွင့်အရေးဆိုင်ရာ NGO အဖွဲ့အစည်းတွေနဲ့ ထိုင်းအလုပ်သမားဝန်ကြီးတို့ တွေ့ဆုံဆွေးနွေးခဲ့တဲ့ အစည်းအဝေးမှာ လူသစ်ဘတ်ရိုက်ခြင်းကို ဖွင့်ပေးသွားမယ်လို့ ထိုင်းအလုပ်သမားဝန်ကြီး ကိုယ်တိုင် ပြောကြားခဲ့လို့ ဖြစ်ပါတယ်။
+
+ဒါပေမယ့်... ဘယ်နေ့၊ ဘယ်လမှာ ဖွင့်မယ်ဆိုတာတော့ တရားဝင် မကြေညာသေးပါဘူး။
+
+လက်ရှိမှာတော့ လူအများစုက ခန့်မှန်းနေကြတာဖြစ်ပြီး တချို့က 12 လ ပိုင်းလောက်မှာ ဖွင့်မယ်လို့ ပြောကြသလို၊ တချို့ကတော့ 8လပိုင်းလောက်မှာ ဖွင့်နိုင်တယ်လို့ ခန့်မှန်းနေကြပါတယ်။ ကျွန်တော်ကတော့ 8 လပိုင်းလောက်ဖွင့်မယ်လို့ခန့်မှန်းပါတယ်၊
+
+ဘာလို့လဲဆိုတော့ ဒီနှစ် e-Work Permit စနစ်အသစ်ရဲ့အခက်အခဲ့ကြောင့် အလုပ်သမားအများအပြား စနစ်ထဲကနေ ပြုတ်ကျကျန်ခဲ့တာတွေ ရှိခဲ့ပါတယ်၊ ဒါ့အပြင် လက်ရှိ မြန်မာနိုင်ငံရဲ့ အခြေအနေကြောင့် MOU စနစ်နဲ့ လုပ်သားသွင်းဖို့ ခက်ခဲနေတဲ့အတွက် ထိုင်းနိုင်ငံထဲမှာ ရှိနေပြီးသား အလုပ်သမားတွေကို တရားဝင်စနစ်ထဲ ပြန်သွင်းနိုင်ဖို့ လိုအပ်နေတာကြောင့်လို့မြင်ပါတယ်၊
+
+နောက်မေးခွန်းတစ်ခုက "အစိုးရက မကြေညာသေးဘဲ ရုံးတွေက ဘာလို့ ကြိုပြီး စာရင်းကောက်နေတာလဲ?"
+
+အဓိကအကြောင်းရင်းကတော့ Customers တွေကို ကြိုတင်ရယူချင်လို့ ဖြစ်ပါတယ်။
+
+ဒါပေမယ့် အဲ့ဒါတစ်ခုတည်းတော့ မဟုတ်ပါဘူး။
+
+အရင်အတွေ့အကြုံတွေအရ အစိုးရက ဖွင့်ပေးတဲ့အချိန်ဟာ ရက်အနည်းငယ်သာ ရှိတတ်ပါတယ်။
+
+အစိုးရဖွင့်ပေးတဲ့အချိန်က 15 ရက်ပဲဖွင့်ပေးတာဖြစ်တော့ ဖွင့်မှပဲစာရင်းကောက်မယ်ဆိုရင်ဘယ်လိုမှမမီနိုင်ပါဘူး၊
+
+နောက်တစ်ခုက စရံငွေကြိုကောက်တဲ့ကိစ္စပါ၊
+
+တချို့ Customers တွေဟာ ရုံးတစ်ခုထက်ပိုပြီး စာရင်းတင်ထားတတ်ကြပါတယ်။
+
+နောက်ဆုံးမှာ ဘယ်ရုံးက အရင်ရလဲဆိုတဲ့ ရုံးနဲ့ပဲ ဆက်လုပ်ကြတဲ့အတွက် အခြားရုံးတွေဘက်မှာ သူတို့လုပ်ထားတဲ့ကုန်ကျစားရိတ်တွေရှုံးတာတွေရှိပါတယ်၊
+
+ဒါကြောင့် စရံငွေကောက်ခံခြင်းဟာ အဲ့ဒီကုန်ကျစရိတ်တွေကို ကာမိစေဖို့နဲ့ Customer ရဲ့ အတည်ပြုမှုကို ရရှိစေဖို့ ဖြစ်ပါတယ်။
+
+စရံပေးတဲ့နေရာမှာတော့ မိမိအပ်တဲ့ရုံး ဒါမှမဟုတ် ပွဲစားကဘယ်လောက်ယုံကြည်ရလဲ အလုပ်အကြောင်းဘယ်လောက်နားလည်ကျွမ်းကျင်လဲ တာ၀န်ယူမှုတာ၀န်ခံမှုရှိလား အရင်လုပ်ဆောင်ခဲ့တဲ့ မှတ်တမ်းကောင်းတွေ ရှိလား စတာတွေကို သေချာစစ်ဆေးပြီးမှ စရံပေး အလုပ်အပ်သင့်ပါတယ်၊
+
+နောက်ဆုံးအနေနဲ့...
+
+လူသစ်ဘတ်ရိုက်ခြင်းနဲ့ ပတ်သက်တဲ့ သတင်းအချက်အလက်အသစ်တွေ၊ အစိုးရရဲ့ တရားဝင်ကြေညာချက်တွေကို သိရှိနိုင်ဖို့အတွက် LaborWork Page ကို Follow လုပ်ထားပြီး စောင့်ကြည့်နိုင်ပါတယ်။
+
+အရေးကြီးတဲ့ Update တွေ ထွက်လာတာနဲ့ အမြန်ဆုံး တင်ဆက်ပေးသွားပါမယ်။
+
+ကျေးဇူးတင်ပါတယ်။`;
+
+// ---------- state ----------
+const S = {
+  fontSize:52, speed:10, lineHeight:2.0, width:82, align:'center',
+  guide:true, mirrorH:false, mirrorV:false, countdown:true
+};
+let playing=false, offset=0, lastTs=0, raf=null, wakeLock=null, hideTimer=null;
+
+const $ = id => document.getElementById(id);
+const flow=$('flow'), stage=$('stage'), prompter=$('prompter');
+
+// ---------- editor wiring ----------
+$('script').value = DEFAULT_SCRIPT;
+
+function bindRange(id, key, fmt, apply){
+  const el=$(id), out=$('v'+id.slice(1));
+  el.addEventListener('input',()=>{
+    let v=parseFloat(el.value);
+    if(key==='lineHeight') v=v/10;
+    S[key]=v; out.textContent=fmt(v); apply&&apply(); saveSettings();
+  });
+}
+bindRange('rFont','fontSize',v=>v+' px',applyStyle);
+bindRange('rSpeed','speed',v=>v,null);
+bindRange('rLine','lineHeight',v=>v.toFixed(1),applyStyle);
+bindRange('rWidth','width',v=>v+'%',applyStyle);
+
+$('segAlign').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  [...$('segAlign').children].forEach(x=>x.classList.toggle('on',x===b));
+  S.align=b.dataset.a; applyStyle(); saveSettings();
+});
+
+document.querySelectorAll('.toggle').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.opt; S[k]=!S[k]; t.classList.toggle('on',S[k]);
+    if(k==='guide') $('guide').classList.toggle('on',S[k]);
+    if(k==='mirrorH'||k==='mirrorV') applyStyle();
+    saveSettings();
+  });
+});
+
+function applyStyle(){
+  flow.style.fontSize=S.fontSize+'px';
+  flow.style.lineHeight=S.lineHeight;
+  flow.style.textAlign=S.align;
+  flow.style.maxWidth=S.width+'%';
+  flow.style.width=S.width+'%';
+  let t='';
+  if(S.mirrorH) t+='scaleX(-1) ';
+  if(S.mirrorV) t+='scaleY(-1) ';
+  stage.style.transform=t;
+}
+
+// ---------- prompter ----------
+function openPrompter(){
+  flow.textContent=$('script').value || ' ';
+  applyStyle();
+  $('guide').classList.toggle('on',S.guide);
+  offset = prompter.clientHeight*0.5; // first line starts at the guide
+  flow.style.transform='translateY('+offset+'px)';
+  prompter.classList.add('show');
+  $('hint').classList.remove('hide');
+  requestWake();
+  if(S.countdown){ runCountdown(()=>setPlaying(true)); }
+  else setPlaying(false);
+  scheduleHide();
+}
+function closePrompter(){
+  setPlaying(false);
+  prompter.classList.remove('show');
+  releaseWake();
+}
+
+function setPlaying(p){
+  playing=p;
+  $('playIcon').innerHTML = p
+    ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>'
+    : '<path d="M8 5v14l11-7z"/>';
+  $('pausedTag').classList.toggle('hidden',p);
+  if(p){ $('hint').classList.add('hide'); lastTs=0; if(!raf) raf=requestAnimationFrame(tick); }
+}
+
+function tick(ts){
+  if(!playing){ raf=null; return; }
+  if(!lastTs) lastTs=ts;
+  const dt=(ts-lastTs)/1000; lastTs=ts;
+  // px/sec scales with font so reading pace feels consistent across sizes
+  const pps = S.speed * (S.fontSize/28) * 3.0;
+  offset -= pps*dt;
+  flow.style.transform='translateY('+offset+'px)';
+  const total=flow.scrollHeight;
+  const traveled = prompter.clientHeight*0.5 - offset;
+  $('prog').style.width = Math.max(0,Math.min(100,(traveled/total)*100))+'%';
+  if(offset < -(total) ){ setPlaying(false); }   // reached the end
+  else raf=requestAnimationFrame(tick);
+}
+
+function restart(){
+  offset=prompter.clientHeight*0.5;
+  flow.style.transform='translateY('+offset+'px)';
+  $('prog').style.width='0%';
+  if(S.countdown){ setPlaying(false); runCountdown(()=>setPlaying(true)); }
+  else setPlaying(true);
+}
+
+// countdown
+function runCountdown(done){
+  const c=$('count'), n=$('countNum'); let k=3;
+  n.textContent=k; c.classList.add('show');
+  const iv=setInterval(()=>{ k--; if(k<=0){clearInterval(iv);c.classList.remove('show');done();} else n.textContent=k; },800);
+}
+
+// tap-to-pause on the text area (not on controls)
+stage.addEventListener('click',()=> setPlaying(!playing));
+
+// manual scrub when paused (drag / wheel)
+let dragY=null;
+prompter.addEventListener('pointerdown',e=>{
+  if(e.target.closest('#controls')||e.target.closest('.exit')) return;
+  if(!playing) dragY=e.clientY;
+});
+prompter.addEventListener('pointermove',e=>{
+  if(dragY===null)return;
+  offset += (e.clientY-dragY); dragY=e.clientY;
+  flow.style.transform='translateY('+offset+'px)';
+});
+window.addEventListener('pointerup',()=>dragY=null);
+prompter.addEventListener('wheel',e=>{ if(!playing){offset-=e.deltaY; flow.style.transform='translateY('+offset+'px)';}},{passive:true});
+
+// controls
+$('goStart').addEventListener('click',openPrompter);
+$('exitBtn').addEventListener('click',closePrompter);
+$('playBtn').addEventListener('click',e=>{e.stopPropagation();setPlaying(!playing);});
+$('restartBtn').addEventListener('click',e=>{e.stopPropagation();restart();});
+$('speedUp').addEventListener('click',e=>{e.stopPropagation();S.speed=Math.min(40,S.speed+2);syncSpeed();});
+$('speedDown').addEventListener('click',e=>{e.stopPropagation();S.speed=Math.max(1,S.speed-2);syncSpeed();});
+$('fontUp').addEventListener('click',e=>{e.stopPropagation();S.fontSize=Math.min(120,S.fontSize+4);syncFont();});
+$('fontDown').addEventListener('click',e=>{e.stopPropagation();S.fontSize=Math.max(28,S.fontSize-4);syncFont();});
+$('mirrorBtn').addEventListener('click',e=>{e.stopPropagation();S.mirrorH=!S.mirrorH;applyStyle();
+  document.querySelector('[data-opt=mirrorH]').classList.toggle('on',S.mirrorH);saveSettings();});
+function syncSpeed(){$('rSpeed').value=S.speed;$('vSpeed').textContent=S.speed;saveSettings();}
+function syncFont(){$('rFont').value=S.fontSize;$('vFont').textContent=S.fontSize+' px';applyStyle();saveSettings();}
+
+// auto-hide controls
+function scheduleHide(){
+  clearTimeout(hideTimer);
+  $('controls').classList.remove('hide'); $('exitBtn').classList.remove('hide');
+  hideTimer=setTimeout(()=>{ if(playing){$('controls').classList.add('hide');$('exitBtn').classList.add('hide');} },3500);
+}
+['pointermove','pointerdown','keydown'].forEach(ev=>prompter.addEventListener(ev,scheduleHide));
+
+// keyboard (handy if a Bluetooth remote / keyboard is paired)
+window.addEventListener('keydown',e=>{
+  if(!prompter.classList.contains('show'))return;
+  if(e.code==='Space'){e.preventDefault();setPlaying(!playing);}
+  if(e.code==='ArrowUp'){S.speed=Math.min(40,S.speed+1);syncSpeed();}
+  if(e.code==='ArrowDown'){S.speed=Math.max(1,S.speed-1);syncSpeed();}
+  if(e.code==='Escape')closePrompter();
+});
+
+// wake lock — keep the iPad awake while reading
+async function requestWake(){ try{ if('wakeLock' in navigator) wakeLock=await navigator.wakeLock.request('screen'); }catch(e){} }
+function releaseWake(){ try{ wakeLock&&wakeLock.release(); wakeLock=null; }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&prompter.classList.contains('show')) requestWake(); });
+
+// ---------- persistence (cross-session, browser localStorage) ----------
+function saveSettings(){
+  try{ localStorage.setItem('lbw_tp_settings', JSON.stringify(S)); }catch(e){}
+}
+function loadSettings(){
+  try{
+    const v=localStorage.getItem('lbw_tp_settings');
+    if(v){ Object.assign(S,JSON.parse(v)); reflectSettings(); }
+  }catch(e){}
+}
+function reflectSettings(){
+  $('rFont').value=S.fontSize; $('vFont').textContent=S.fontSize+' px';
+  $('rSpeed').value=S.speed;  $('vSpeed').textContent=S.speed;
+  $('rLine').value=Math.round(S.lineHeight*10); $('vLine').textContent=S.lineHeight.toFixed(1);
+  $('rWidth').value=S.width;  $('vWidth').textContent=S.width+'%';
+  [...$('segAlign').children].forEach(x=>x.classList.toggle('on',x.dataset.a===S.align));
+  document.querySelectorAll('.toggle').forEach(t=>t.classList.toggle('on',!!S[t.dataset.opt]));
+}
+
+// script library
+function listScripts(){
+  let keys=[];
+  try{ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); if(k&&k.indexOf('lbw_script:')===0) keys.push(k);} }catch(e){}
+  keys.sort();
+  const wrap=$('scripts'); wrap.innerHTML='';
+  if(!keys.length){ wrap.innerHTML='<div class="empty">No saved scripts yet. Save the current one to reuse it next time.</div>'; return; }
+  for(const k of keys){
+    let data; try{ data=JSON.parse(localStorage.getItem(k)); }catch(e){continue;}
+    const words=(data.text||'').trim().split(/\s+/).length;
+    const el=document.createElement('div'); el.className='script-item';
+    el.innerHTML=`<div class="meta"><div class="t"></div><div class="s">${words} words · ${data.date||''}</div></div>
+      <button data-load>Load</button><button class="del" data-del>Delete</button>`;
+    el.querySelector('.t').textContent=data.title||'Untitled';
+    el.querySelector('[data-load]').onclick=()=>{ $('script').value=data.text; };
+    el.querySelector('[data-del]').onclick=()=>{ try{localStorage.removeItem(k);}catch(e){} listScripts(); };
+    wrap.appendChild(el);
+  }
+}
+$('saveBtn').addEventListener('click',()=>{
+  const text=$('script').value.trim(); if(!text) return;
+  const title=prompt('Name this script:', 'Mass Registration 2027');
+  if(!title) return;
+  const id='lbw_script:'+Date.now();
+  const date=new Date().toLocaleDateString();
+  try{ localStorage.setItem(id, JSON.stringify({title,text,date})); }catch(e){}
+  listScripts();
+});
+
+// init
+applyStyle();
+loadSettings();
+listScripts();
+</script>
