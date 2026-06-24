@@ -10,6 +10,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
 
 <style>
   :root{
@@ -153,6 +156,66 @@
     opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease}
   #speedFlash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 
+  /* live session (editor) */
+  .live .row2{display:flex;gap:10px}
+  .live input.code{flex:1;background:var(--surface);border:1px solid var(--line);color:var(--text);
+    font-family:var(--ui);font-size:18px;font-weight:700;letter-spacing:.08em;text-align:center;
+    padding:12px;border-radius:11px;outline:none;text-transform:uppercase}
+  .live input.code:focus{border-color:var(--accent)}
+  .live .btn{flex:1;border:1px solid var(--line);border-radius:11px;padding:13px 10px;font-size:14px;
+    font-weight:600;background:var(--surface);color:var(--text);display:flex;flex-direction:column;align-items:center;gap:3px}
+  .live .btn b{font-size:14.5px}
+  .live .btn small{font-size:11px;color:var(--muted);font-weight:500}
+  .live .btn.stage{border-color:var(--accent);background:var(--accent-soft)}
+  .live .btn:active{filter:brightness(1.1)}
+  .live .note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+  .offline-note{font-size:12.5px;color:var(--danger);margin-top:8px}
+
+  /* stage live badge + standby overlay */
+  #stageBadge{position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:6;
+    background:rgba(20,24,29,.92);border:1px solid var(--accent);color:var(--accent);
+    padding:7px 15px;border-radius:11px;font-size:12.5px;font-weight:700;letter-spacing:.04em;transition:opacity .35s}
+  #stageBadge.hidden{display:none}
+  #standby{position:absolute;inset:0;z-index:5;background:#000;display:none;
+    align-items:center;justify-content:center;flex-direction:column;gap:14px}
+  #standby.show{display:flex}
+  #standby .big{font-family:var(--ui);font-size:30px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+  #standby .sub{font-size:14px;color:#555}
+
+  /* ---------- REMOTE VIEW ---------- */
+  #remote{position:fixed;inset:0;background:var(--bg);display:none;z-index:60;flex-direction:column}
+  #remote.show{display:flex}
+  .rm-top{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line);background:var(--surface)}
+  .rm-top .dot{width:10px;height:10px;border-radius:50%;background:#3ad17a;box-shadow:0 0 0 4px rgba(58,209,122,.16)}
+  .rm-top .dot.off{background:var(--danger);box-shadow:0 0 0 4px rgba(255,91,91,.16)}
+  .rm-top .ttl{font-weight:700;font-size:15px}
+  .rm-top .ttl small{display:block;color:var(--muted);font-weight:500;font-size:12px;margin-top:2px}
+  .rm-top .grow{flex:1}
+  .rm-leave{background:var(--surface-2);border:1px solid var(--line);color:var(--text);padding:9px 15px;border-radius:10px;font-size:13px;font-weight:600}
+  #rmView{flex:1;position:relative;overflow:hidden;background:#0d1014;margin:14px;border-radius:14px;border:1px solid var(--line)}
+  #rmView .gline{position:absolute;left:0;right:0;top:40%;border-top:2px solid var(--accent);opacity:.4;z-index:2;pointer-events:none}
+  #rmFlow{position:absolute;left:0;right:0;padding:0 20px;font-family:var(--my);color:#e8edf2;font-size:23px;
+    line-height:2;text-align:center;white-space:pre-wrap;word-break:break-word;will-change:transform}
+  .rm-controls{padding:14px 16px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:14px}
+  .rm-seek{width:100%;-webkit-appearance:none;appearance:none;height:8px;border-radius:8px;background:var(--surface-2);outline:none}
+  .rm-seek::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .rm-seek::-moz-range-thumb{width:30px;height:30px;border:none;border-radius:50%;background:var(--accent)}
+  .rm-main{display:flex;align-items:center;justify-content:center;gap:12px}
+  .rm-btn{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:14px;
+    height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:600;flex:1}
+  .rm-btn svg{width:24px;height:24px}
+  .rm-btn:active{background:var(--line)}
+  .rm-btn.play{flex:1.4;background:var(--accent);color:#1a1205;border-color:var(--accent)}
+  .rm-btn.on{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+  .rm-row{display:flex;gap:12px}
+  .rm-step{flex:1;display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:6px 8px}
+  .rm-step button{width:46px;height:46px;border-radius:11px;background:transparent;color:var(--text);font-size:24px;font-weight:600}
+  .rm-step button:active{background:var(--line)}
+  .rm-step .v{display:flex;flex-direction:column;align-items:center;min-width:54px}
+  .rm-step .v b{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+  .rm-step .v i{font-style:normal;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+
   /* controls */
   #controls{
     position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
@@ -249,6 +312,18 @@
     </div>
 
     <div class="pane right">
+      <div class="group live">
+        <h3>Live session · multi-device</h3>
+        <div class="row2" style="margin-bottom:10px">
+          <input class="code" id="sessCode" maxlength="8" placeholder="CODE">
+        </div>
+        <div class="row2">
+          <button class="btn stage" id="goStage"><b>Start filming</b><small>this screen reads</small></button>
+          <button class="btn" id="goRemote"><b>Open remote</b><small>control another</small></button>
+        </div>
+        <div class="note" id="liveNote">Same code on both devices. The filming screen taps <b>Start filming</b>; a helper opens <b>Open remote</b> on their phone to pause, seek and adjust while you read.</div>
+      </div>
+
       <div class="group">
         <h3>Reading</h3>
         <div class="ctl">
@@ -289,7 +364,7 @@
 
       <div class="group">
         <div class="lib-head">
-          <h3 style="margin:0">Saved scripts</h3>
+          <h3 style="margin:0" id="libTitle">Saved scripts</h3>
           <button class="save-btn" id="saveBtn">+ Save current</button>
         </div>
         <div class="scripts" id="scripts"></div>
@@ -304,6 +379,9 @@
   <div class="fade bot"></div>
   <div class="guide on" id="guide"></div>
   <div id="stage"><div id="flow"></div></div>
+
+  <div id="stageBadge" class="hidden">● LIVE</div>
+  <div id="standby"><div class="big">● STANDBY</div><div class="sub">waiting for action…</div></div>
 
   <div class="paused-tag hidden" id="pausedTag"><span class="pd"></span>Paused — tap to resume</div>
 
@@ -337,7 +415,58 @@
   <div id="count"><div class="num" id="countNum">3</div></div>
 </div>
 
+<!-- ============ REMOTE ============ -->
+<div id="remote">
+  <div class="rm-top">
+    <span class="dot off" id="rmDot"></span>
+    <div class="ttl">Remote · <span id="rmCode">—</span><small id="rmStat">connecting…</small></div>
+    <div class="grow"></div>
+    <button class="rm-leave" id="rmLeave">Leave</button>
+  </div>
+
+  <div id="rmView">
+    <div class="gline"></div>
+    <div id="rmFlow"></div>
+  </div>
+
+  <div class="rm-controls">
+    <input class="rm-seek" id="rmSeek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Seek">
+    <div class="rm-main">
+      <button class="rm-btn" id="rmRestart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Restart</button>
+      <button class="rm-btn" id="rmBack"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 18V6l-8.5 6 8.5 6zM20 18V6l-8.5 6 8.5 6z"/></svg>Back</button>
+      <button class="rm-btn play" id="rmPlay"><svg id="rmPlayIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><span id="rmPlayLbl">Play</span></button>
+      <button class="rm-btn" id="rmFwd"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 6v12l8.5-6L13 6zM4 6v12l8.5-6L4 6z"/></svg>Forward</button>
+      <button class="rm-btn" id="rmStandby"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>Standby</button>
+    </div>
+    <div class="rm-row">
+      <div class="rm-step">
+        <button id="rmSpeedDown">−</button>
+        <span class="v"><b id="rmSpeed">10</b><i>speed</i></span>
+        <button id="rmSpeedUp">+</button>
+      </div>
+      <div class="rm-step">
+        <button id="rmFontDown">−</button>
+        <span class="v"><b id="rmFont">52</b><i>size</i></span>
+        <button id="rmFontUp">+</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+// ===== Firebase config (from your project lbw-teleprompter) =====
+// If live sync ever fails to connect, replace this block with the exact
+// snippet from Firebase console → Project settings → Your apps.
+const firebaseConfig = {
+  apiKey: "AIzaSyCJX9InRfsqVQCfsK3hfLLo_WoGxkw_TpU",
+  authDomain: "lbw-teleprompter.firebaseapp.com",
+  databaseURL: "https://lbw-teleprompter-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "lbw-teleprompter",
+  storageBucket: "lbw-teleprompter.firebasestorage.app",
+  messagingSenderId: "279526688967",
+  appId: "1:279526688967:web:60112fbd3f94c55c8856e2"
+};
+
 const DEFAULT_SCRIPT = `မင်္ဂလာပါ၊ Laborwork ကပြန်လည်ကြိုဆိုလိုက်ပါတယ်၊
 
 ဒီနေ့တော့ လူသစ်ဘတ်ရိုက် တဲ့ကိစ္စနဲ့ပတ်သက်ပြီးအမေးများနေတဲ့မေးခွန်းတွေကိုဖြေပေးပါမယ်၊
@@ -484,6 +613,7 @@ function openPrompter(){
 }
 function closePrompter(){
   setPlaying(false);
+  if(role==='stage') endStage();
   prompter.classList.remove('show');
   releaseWake();
 }
@@ -495,6 +625,7 @@ function setPlaying(p){
     : '<path d="M8 5v14l11-7z"/>';
   $('pausedTag').classList.toggle('hidden',p);
   if(p){ $('hint').classList.add('hide'); lastTs=0; if(!raf) raf=requestAnimationFrame(tick); }
+  if(role==='stage'){ stageControl({playing:p}); publishStatus(true); }
 }
 
 function tick(ts){
@@ -518,6 +649,7 @@ function updateProgress(){
   const percent = Math.max(0,Math.min(100,(traveled/total)*100));
   $('prog').style.width = percent+'%';
   if(!seeking) $('timeline').value = percent;
+  if(role==='stage') publishStatus();
 }
 
 // jump to a position in the script (used by the seek slider)
@@ -585,8 +717,8 @@ $('fontUp').addEventListener('click',e=>{e.stopPropagation();S.fontSize=Math.min
 $('fontDown').addEventListener('click',e=>{e.stopPropagation();S.fontSize=Math.max(28,S.fontSize-4);syncFont();});
 $('mirrorBtn').addEventListener('click',e=>{e.stopPropagation();S.mirrorH=!S.mirrorH;applyStyle();
   document.querySelector('[data-opt=mirrorH]').classList.toggle('on',S.mirrorH);saveSettings();});
-function syncSpeed(){$('rSpeed').value=S.speed;$('vSpeed').textContent=S.speed;const sv=$('speedVal');if(sv)sv.textContent=S.speed;saveSettings();}
-function syncFont(){$('rFont').value=S.fontSize;$('vFont').textContent=S.fontSize+' px';const fv=$('fontVal');if(fv)fv.textContent=S.fontSize;applyStyle();saveSettings();}
+function syncSpeed(){$('rSpeed').value=S.speed;$('vSpeed').textContent=S.speed;const sv=$('speedVal');if(sv)sv.textContent=S.speed;saveSettings();if(role==='stage')stageControl({speed:S.speed});}
+function syncFont(){$('rFont').value=S.fontSize;$('vFont').textContent=S.fontSize+' px';const fv=$('fontVal');if(fv)fv.textContent=S.fontSize;applyStyle();saveSettings();if(role==='stage')stageControl({fontSize:S.fontSize});}
 
 // auto-hide controls
 function scheduleHide(){
@@ -654,14 +786,188 @@ $('saveBtn').addEventListener('click',()=>{
   const text=$('script').value.trim(); if(!text) return;
   const title=prompt('Name this script:', 'Mass Registration 2027');
   if(!title) return;
+  if(CLOUD){ cloudSave(title,text); return; }
   const id='lbw_script:'+Date.now();
   const date=new Date().toLocaleDateString();
   try{ localStorage.setItem(id, JSON.stringify({title,text,date})); }catch(e){}
   listScripts();
 });
 
+// =====================================================================
+//  FIREBASE · shared library + live Stage/Remote control
+// =====================================================================
+let db=null, CLOUD=false, role='solo', ctrlRef=null, statRef=null;
+let applyingRemote=false, lastStatusTs=0, lastSeekToken=0, lastCmdToken=0;
+let rmSeeking=false, rmPlaying=false, rmSpeed=10, rmFont=52, rmStandbyOn=false, remoteText='';
+
+try{
+  if(window.firebase && firebaseConfig && firebaseConfig.apiKey){
+    firebase.initializeApp(firebaseConfig);
+    db=firebase.database();
+    CLOUD=true;
+  }
+}catch(e){ console.warn('Firebase init failed:',e); CLOUD=false; }
+
+function normCode(c){ return (c||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8); }
+function genCode(){ return 'LBW'+Math.floor(100+Math.random()*900); }
+$('sessCode').value = genCode();
+
+// ---------- shared cloud library ----------
+function cloudLibInit(){
+  $('libTitle').textContent='Shared scripts (cloud)';
+  db.ref('library').on('value',snap=>{
+    const wrap=$('scripts'); wrap.innerHTML='';
+    const val=snap.val()||{};
+    const items=Object.entries(val).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
+    if(!items.length){ wrap.innerHTML='<div class="empty">No shared scripts yet. Save one to share it with every device.</div>'; return; }
+    for(const [id,data] of items){
+      const words=(data.text||'').trim().split(/\s+/).length;
+      const el=document.createElement('div'); el.className='script-item';
+      el.innerHTML='<div class="meta"><div class="t"></div><div class="s">'+words+' words · '+(data.date||'')+'</div></div>'
+        +'<button data-load>Load</button><button class="del" data-del>Delete</button>';
+      el.querySelector('.t').textContent=data.title||'Untitled';
+      el.querySelector('[data-load]').onclick=()=>{ setScript(data.text); };
+      el.querySelector('[data-del]').onclick=()=>{ if(confirm('Delete "'+(data.title||'')+'" for everyone?')) db.ref('library/'+id).remove(); };
+      wrap.appendChild(el);
+    }
+  });
+}
+function cloudSave(title,text){
+  const ref=db.ref('library').push();
+  ref.set({title,text,date:new Date().toLocaleDateString(),ts:Date.now()});
+}
+
+// ---------- STAGE (the reading screen) ----------
+function startStage(){
+  if(!CLOUD){ alert('Live sessions need an internet connection.'); return; }
+  const code=normCode($('sessCode').value);
+  if(!code){ alert('Enter a session code first.'); return; }
+  role='stage';
+  ctrlRef=db.ref('sessions/'+code+'/control');
+  statRef=db.ref('sessions/'+code+'/status');
+  applyingRemote=true;
+  ctrlRef.set({
+    playing:false, speed:S.speed, fontSize:S.fontSize, standby:false,
+    scriptText:$('script').value, seek:{percent:0,token:0}, cmd:{action:'',token:0}, ts:Date.now()
+  }).then(()=>{ applyingRemote=false; });
+  statRef.update({online:true, position:0, playing:false, ts:Date.now()});
+  statRef.child('online').onDisconnect().set(false);
+  ctrlRef.on('value',snap=>applyControl(snap.val()||{}));
+  $('stageBadge').textContent='● LIVE · '+code;
+  $('stageBadge').classList.remove('hidden');
+  openPrompter();
+}
+function endStage(){
+  try{ if(statRef) statRef.update({online:false,playing:false}); }catch(e){}
+  try{ if(ctrlRef) ctrlRef.off(); }catch(e){}
+  role='solo'; ctrlRef=null; statRef=null;
+  $('stageBadge').classList.add('hidden');
+  setStandby(false);
+}
+function stageControl(p){ if(role==='stage'&&ctrlRef&&!applyingRemote) ctrlRef.update(p); }
+function publishStatus(force){
+  if(role!=='stage'||!statRef) return;
+  const now=Date.now(); if(!force && now-lastStatusTs<220) return; lastStatusTs=now;
+  const total=flow.scrollHeight||1;
+  const pct=Math.max(0,Math.min(100,(prompter.clientHeight*0.5-offset)/total*100));
+  statRef.update({position:pct, playing:playing, ts:now});
+}
+function applyControl(c){
+  if(role!=='stage') return;
+  applyingRemote=true;
+  if(typeof c.fontSize==='number' && c.fontSize!==S.fontSize){ S.fontSize=c.fontSize; syncFont(); }
+  if(typeof c.speed==='number' && c.speed!==S.speed){ S.speed=c.speed; syncSpeed(); }
+  if(typeof c.standby==='boolean'){ setStandby(c.standby); }
+  if(c.seek && c.seek.token && c.seek.token!==lastSeekToken){ lastSeekToken=c.seek.token; seekToPercent(c.seek.percent||0); }
+  if(c.cmd && c.cmd.token && c.cmd.token!==lastCmdToken){
+    lastCmdToken=c.cmd.token;
+    if(c.cmd.action==='fwd') nudge(1);
+    else if(c.cmd.action==='back') nudge(-1);
+    else if(c.cmd.action==='restart') restart();
+  }
+  if(typeof c.playing==='boolean' && c.playing!==playing){ setPlaying(c.playing); }
+  applyingRemote=false;
+}
+function nudge(dir){ // +1 forward, -1 back (about two lines)
+  offset -= dir*(S.fontSize*S.lineHeight*1.8);
+  flow.style.transform='translateY('+offset+'px)';
+  updateProgress();
+}
+function setStandby(b){ S.standby=b; $('standby').classList.toggle('show',b); }
+
+// ---------- REMOTE (the controller) ----------
+function startRemote(){
+  if(!CLOUD){ alert('The remote needs an internet connection.'); return; }
+  const code=normCode($('sessCode').value);
+  if(!code){ alert('Enter the session code shown on the filming screen.'); return; }
+  role='remote';
+  ctrlRef=db.ref('sessions/'+code+'/control');
+  statRef=db.ref('sessions/'+code+'/status');
+  $('rmCode').textContent=code;
+  $('rmStat').textContent='connecting…';
+  $('remote').classList.add('show');
+  ctrlRef.on('value',snap=>remoteOnControl(snap.val()||{}));
+  statRef.on('value',snap=>remoteOnStatus(snap.val()||{}));
+}
+function leaveRemote(){
+  try{ if(ctrlRef) ctrlRef.off(); if(statRef) statRef.off(); }catch(e){}
+  role='solo'; ctrlRef=null; statRef=null;
+  $('remote').classList.remove('show');
+}
+function rmSetPlay(p){ rmPlaying=p;
+  $('rmPlayIcon').innerHTML = p
+    ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>'
+    : '<path d="M8 5v14l11-7z"/>';
+  $('rmPlayLbl').textContent = p ? 'Pause' : 'Play';
+}
+function remoteOnControl(c){
+  if(typeof c.speed==='number'){ rmSpeed=c.speed; $('rmSpeed').textContent=c.speed; }
+  if(typeof c.fontSize==='number'){ rmFont=c.fontSize; $('rmFont').textContent=c.fontSize; }
+  if(typeof c.standby==='boolean'){ rmStandbyOn=c.standby; $('rmStandby').classList.toggle('on',c.standby); }
+  if(typeof c.scriptText==='string' && c.scriptText!==remoteText){ remoteText=c.scriptText; $('rmFlow').textContent=remoteText; rmRenderPreview(rmLastPct); }
+}
+let rmLastPct=0;
+function remoteOnStatus(s){
+  const online=!!s.online;
+  $('rmDot').classList.toggle('off',!online);
+  $('rmStat').textContent = online ? 'Stage connected' : 'Stage offline';
+  if(typeof s.playing==='boolean') rmSetPlay(s.playing);
+  if(typeof s.position==='number'){ rmLastPct=s.position; if(!rmSeeking){ $('rmSeek').value=s.position; rmRenderPreview(s.position); } }
+}
+function rmRenderPreview(pct){
+  const vp=$('rmView'); const total=$('rmFlow').scrollHeight||1;
+  const y=vp.clientHeight*0.4-(pct/100)*total;
+  $('rmFlow').style.transform='translateY('+y+'px)';
+}
+function rmCmd(action){ if(ctrlRef) ctrlRef.child('cmd').set({action,token:Date.now()}); }
+
+// remote button wiring
+$('rmPlay').addEventListener('click',()=>{ if(ctrlRef) ctrlRef.update({playing:!rmPlaying}); });
+$('rmBack').addEventListener('click',()=>rmCmd('back'));
+$('rmFwd').addEventListener('click',()=>rmCmd('fwd'));
+$('rmRestart').addEventListener('click',()=>{ if(confirm('Restart from the top?')) rmCmd('restart'); });
+$('rmStandby').addEventListener('click',()=>{ if(ctrlRef) ctrlRef.update({standby:!rmStandbyOn}); });
+$('rmSpeedUp').addEventListener('click',()=>{ if(ctrlRef) ctrlRef.update({speed:Math.min(40,+(rmSpeed+1).toFixed(1))}); });
+$('rmSpeedDown').addEventListener('click',()=>{ if(ctrlRef) ctrlRef.update({speed:Math.max(0.5,+(rmSpeed-1).toFixed(1))}); });
+$('rmFontUp').addEventListener('click',()=>{ if(ctrlRef) ctrlRef.update({fontSize:Math.min(120,rmFont+4)}); });
+$('rmFontDown').addEventListener('click',()=>{ if(ctrlRef) ctrlRef.update({fontSize:Math.max(28,rmFont-4)}); });
+$('rmSeek').addEventListener('pointerdown',()=>{ rmSeeking=true; });
+$('rmSeek').addEventListener('input',()=>{ const p=parseFloat($('rmSeek').value); rmRenderPreview(p); if(ctrlRef) ctrlRef.child('seek').set({percent:p,token:Date.now()}); });
+$('rmSeek').addEventListener('pointerup',()=>{ rmSeeking=false; });
+$('rmSeek').addEventListener('change',()=>{ rmSeeking=false; });
+$('rmLeave').addEventListener('click',leaveRemote);
+
+// editor live buttons
+$('goStage').addEventListener('click',startStage);
+$('goRemote').addEventListener('click',startRemote);
+
 // init
 applyStyle();
 loadSettings();
-listScripts();
+if(CLOUD){ cloudLibInit(); }
+else {
+  listScripts();
+  $('liveNote').innerHTML='<span class="offline-note">Live sync is offline — couldn\u2019t reach Firebase. The teleprompter still works on this device.</span>';
+  $('goStage').disabled=$('goRemote').disabled=true;
+}
 </script>
