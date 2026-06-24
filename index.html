@@ -593,7 +593,8 @@ function applyStyle(){
 }
 
 // ---------- prompter ----------
-function openPrompter(){
+function openPrompter(autostart){
+  if(autostart===undefined) autostart=true;
   flow.textContent=$('script').value || ' ';
   applyStyle();
   $('guide').classList.toggle('on',S.guide);
@@ -607,7 +608,7 @@ function openPrompter(){
   $('hint').classList.remove('hide');
   seeking=false;
   requestWake();
-  if(S.countdown){ runCountdown(()=>setPlaying(true)); }
+  if(autostart && S.countdown){ runCountdown(()=>setPlaying(true)); }
   else setPlaying(false);
   scheduleHide();
 }
@@ -809,8 +810,8 @@ try{
 }catch(e){ console.warn('Firebase init failed:',e); CLOUD=false; }
 
 function normCode(c){ return (c||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8); }
-function genCode(){ return 'LBW'+Math.floor(100+Math.random()*900); }
-$('sessCode').value = genCode();
+function genCode(){ return 'LBW1'; }
+$('sessCode').value = 'LBW1';
 
 // ---------- shared cloud library ----------
 function cloudLibInit(){
@@ -855,7 +856,7 @@ function startStage(){
   ctrlRef.on('value',snap=>applyControl(snap.val()||{}));
   $('stageBadge').textContent='● LIVE · '+code;
   $('stageBadge').classList.remove('hidden');
-  openPrompter();
+  openPrompter(false);
 }
 function endStage(){
   try{ if(statRef) statRef.update({online:false,playing:false}); }catch(e){}
